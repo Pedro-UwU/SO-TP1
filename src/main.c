@@ -111,6 +111,9 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 			if (close(output[FD_WRITE]) == -1) {
 				exit_error("ERROR: Closing output write");
 			}
+
+			//Add INITIAL_FILES because it didn't change in the parent
+			conf->assigned_jobs += INITIAL_FILES;
 		}
 	}
 }

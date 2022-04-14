@@ -51,4 +51,7 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-src/dummy_salve.c
+src/dummy_slave.c
+dummy_slave
+main
+*.txt

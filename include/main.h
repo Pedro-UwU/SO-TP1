@@ -6,7 +6,7 @@
 #define FD_READ 0
 #define STDIN 0
 #define STDOUT 1
-#define INITIAL_FILES 4
+#define INITIAL_FILES 2
 #define SLAVE_COMMAND "./dummy_slave"
 
 typedef struct master_conf {
