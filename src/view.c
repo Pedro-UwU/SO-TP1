@@ -3,6 +3,7 @@
 #include <sys/mman.h>
 #include <sys/semaphore.h>
 #include <error_handler.h>
+#include <unistd.h>
 
 #define ERROR -1
 #define SHM_SIZE 4096
@@ -64,7 +65,7 @@ char *open_shm(size_t shm_size) {
     if(shm == MAP_FAILED) {
         exit_error("ERROR: Unable to map shared memory");
     }
-
+    close(shm_fd);
     return shm;
 }
 
@@ -77,7 +78,7 @@ sem_t *open_sem(const char *sem_name) {
 
 void close_shm(const char *shm_name, size_t shm_size) {
     //unmap shared memory
-    if ( munmap((void *)shm_name, shm_size) == ERROR ){
+    if (munmap((void *)shm_name, shm_size) == ERROR ){
         exit_error("ERROR: Unable to unmap shared memory");
     }
     //unlink shared memory
