@@ -1,68 +1,93 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <fcntl.h>
-#include <sys/shm.h>
-#include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/semaphore.h>
+#include <error_handler.h>
 
 #define ERROR -1
+#define SHM_SIZE 4096
+#define SHM_NAME "buffer"
+#define SEM_NAME "semaphore"
 
-/* based on [DINOSAUR BOOK] page 134 figure 3.17 */
+/* based on "Operating Systems Concepts" (Silberschatz, Galvin, Gagne) page 134  */
 
-void printShm(sem_t *sem, char *shm);
+/*
+ * REVISAR:
+ * Size de la shared memory queda predefinido o lo leemos como argumento?
+ * Al crear la shared memory, parametros? create + r/w va bien?
+ * print_shm?
+ */
+
+void print_shm(sem_t *sem, char *shm);
+void close_sem(sem_t *sem);
+void close_shm(const char *shm_name, size_t shm_size);
+char *open_shm(size_t shm_size);
+sem_t *open_sem(const char *sem_name);
 
 int main(int argc, char *argv[]) {
 
-    /* the size (in bytes) of shared memory object  -> leer o elegir valor directamente? */
-    const int SIZE = 4096;
+    sem_t *sem;     // pointer to semaphore
+    char *shm;      // pointer to shared memory object
 
-    /* name of the shared memory object */
-    const char *name = "buffer";
+    // open shared memory object and semaphore
+    shm = open_shm(SHM_SIZE);
+    sem = open_sem(SEM_NAME);
 
-    /* shared memory file descriptor */
-    int fd;
-
-    /* pointer to shared memory obect */
-    char *shm;
-
-    /* pointer to semaphore*/
-    sem_t *sem;
-
-    /* open the shared memory object -> create + r/w ta bien? */
-    fd = shm_open(name, O_CREAT | O_RDWR, 0666);
-    if(fd == ERROR ) {
-        perror("ERROR: Unable to open shared memory");
-    }
-
-    /* memory map the shared memory object */
-    shm = (char *) mmap(0, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if(shm == MAP_FAILED) {
-        perror("ERROR: Unable to map shared memory");
-    }
-
-    sem = sem_open("semaphore", O_CREAT, 0644, 1);
-    if(sem == SEM_FAILED) {
-        perror("ERROR: Unable to open semaphore");
-    }
-
-    // read and print data from buffer
-    printShm(sem, shm);
+    // read and print data from shared memory
+    print_shm(sem, shm);
 
     // close shared memory and semaphore
-    sem_close(sem);
-
-    /* remove the shared memory object */
-    shm_unlink(name); return 0;
+    close_sem(sem);
+    close_shm(SHM_NAME, SHM_SIZE);
+    return 0;
 }
 
-void printShm(sem_t *sem, char *shm) {
+void print_shm(sem_t *sem, char *shm) {
     while(1) {
-        wait(sem);
+        if(sem_wait(sem) == ERROR) {
+            exit_error("ERROR: Unable to acquire lock");
+        }
         if(*shm == 0) {
             break;
         }
         int current = printf("%s", shm);
         shm += (current + 1) * sizeof(*shm);
+    }
+}
+
+char *open_shm(size_t shm_size) {
+    int shm_fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, 0666);
+    if(shm_fd == ERROR ) {
+        exit_error("ERROR: Unable to open shared memory");
+    }
+    char *shm = (char *) mmap(0, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if(shm == MAP_FAILED) {
+        exit_error("ERROR: Unable to map shared memory");
+    }
+
+    return shm;
+}
+
+sem_t *open_sem(const char *sem_name) {
+    sem_t *sem = sem_open(SEM_NAME, O_CREAT, 0644, 1);
+    if(sem == SEM_FAILED) {
+        exit_error("ERROR: Unable to open semaphore");
+    }
+}
+
+void close_shm(const char *shm_name, size_t shm_size) {
+    //unmap shared memory
+    if ( munmap((void *)shm_name, shm_size) == ERROR ){
+        exit_error("ERROR: Unable to unmap shared memory");
+    }
+    //unlink shared memory
+    if(shm_unlink(shm_name) == ERROR) {
+        exit_error("ERROR: Unable to unlink shared memory");
+    }
+}
+
+void close_sem(sem_t *sem_name) {
+    if(sem_close(sem_name) == ERROR) {
+        exit_error("ERROR: Unable to close semaphore");
     }
 }
