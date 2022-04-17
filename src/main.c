@@ -3,7 +3,7 @@
 * Integrantes del grupo:             *
 *   Causse, Juan Ignacio (61105)     *
 *   Lopez, Pedro (60711)             *
-*   Vasquez, Malena (TODO_LEGAJO)    *
+*   Vasquez, Malena (60072)          *
 *************************************/
 
 //INCLUDE HEADER FILES:
