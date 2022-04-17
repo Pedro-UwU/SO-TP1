@@ -20,6 +20,6 @@ por stdin un archivo con el que continuar el procesamiento cada vez que termina.
 
 #define EXEC_CMD "minisat"              //Command that will be executed
 //#define GREP_PARSE_CMD "cat"
-#define GREP_PARSE_CMD "grep -o -e \"Number of .*[0-9]+\" -e \"CPU time.*\" -e \".*SATISFIABLE\""
+#define GREP_PARSE_CMD "grep -o -e \"Number of .*[0-9]\\+\" -e \"CPU time.*\" -e \".*SATISFIABLE\""
 
 #endif //SLAVE_H
