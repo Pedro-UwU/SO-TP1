@@ -22,11 +22,14 @@ por stdin un archivo con el que continuar el procesamiento cada vez que termina.
 #define STDIN 0                 //Stdin file descriptor
 #define STDOUT 1                //Stdout file descriptor
 #define CMD_MAX_LEN 750
+#define BUFF_MAX_LEN 65536       //Output read buffer len
 
 //FUNCTION HEADERS:
 short processFile(char* filePath, pid_t* childPID, int* readFD);                    //This function executes the program that does the processing of the file
+int getFileDescriptor(pid_t pid, const pid_t* pidArray, const int* readFDArray, int dim);      //This function searches for a PID and returns its corresponding file descriptor, or -1 if the PID could not be found
 
 int main (int argc, char** argv){
+    //VALIDATE PARAMETERS
     if (argc < MIN_PARAMS || argc > MAX_PARAMS){                                    //This program receives up to 2 filePaths
         return EXIT_FAILURE;
     }
@@ -36,20 +39,27 @@ int main (int argc, char** argv){
         initialFiles--;
     }
     #endif
-
+    //START PROCESSING INITIAL FILES
     pid_t pidArray[initialFiles];                                                   //Execute processing program. Its PID and the read end of its pipe will be stored in the arrays
     int readFDArray[initialFiles];
     for (i = 0; i < initialFiles; i++){
-        if(processFile(argv[i + 1], &(pidArray[i]), &(readFDArray[i])) != 0){       //If processFile does not return 0, an error occurred
+        if (processFile(argv[i + 1], &(pidArray[i]), &(readFDArray[i])) != 0){       //If processFile does not return 0, an error occurred
             return EXIT_FAILURE;
         }
         processing++;
     }
-    /* ! */ //HASTA ACA ESTA TODO LISTO
+    //WHEN READY, RETURN RESPONSES TO MAIN PROGRAM
+    pid_t child;                                                                    //This variable will store the PID of a child process that has ended
+    int fd;                                                                         //And the read-end file descriptor of the pipe that communicates the program with it
     while (processing > 0){
-        wait(NULL);
+        child = wait(NULL);                                                         //Wait for any child process to end
+        fd = getFileDescriptor(child, pidArray, readFDArray, initialFiles);
+        //TODO: LLAMAR A MAIN
+        char buff[BUFF_MAX_LEN] = {0};
+        read(fd, buff, BUFF_MAX_LEN);
+        close(fd);                                                                  //After retrieving the returned information, the fd is no longer needed
+        puts(buff);
         processing--;
-        /* ! */
     }
     return EXIT_SUCCESS;
 }
@@ -80,12 +90,21 @@ short processFile(char* filePath, pid_t* childPID, int* readFD){
     return 0;                                                                       //No errors occurred
 }
 
+int getFileDescriptor(pid_t pid, const pid_t* pidArray, const int* readFDArray, int dim){
+    int i;
+    for (i = 0; i < dim; i++){
+        if (pid == pidArray[i]){
+            return readFDArray[i];
+        }
+    }
+    return -1;
+}
+
 //FILE* writeEnd = fdopen(fd[PIPE_WRITE], "w");
 
 /*ESTADO:
 processFile listo
 TODO:
-    * Recuperar la respuesta de los minisat | grep (estan en el arreglo de file descriptors y se tiene el PID de cada subproceso en el arreglo)
     * Avisar a main cuando se termino un archivo
         *Codigo para que siempre se mantenga con la cantidad maxima de minisats trabajando al mismo tiempo (tiene que pedir un nuevo archivo cada vez e iniciar un nuevo processFile, no puede ser bloqueante)
 */
