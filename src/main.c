@@ -12,6 +12,7 @@
 #include <error_handler.h>
 #include <utils.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/select.h>
 
 #define MAX_BUFF_SIZE 65536
@@ -38,6 +39,7 @@ int main(int argc, char** argv){
 		exit_error("ERROR opening output file");
 	}
 	
+	/* temp */
 	char buffer[MAX_BUFF_SIZE] = {0};
 	int buffer_index = 0;
 
@@ -47,11 +49,10 @@ int main(int argc, char** argv){
 
 	slave slaves[total_slaves];
 	init_slaves(slaves, total_slaves, (char**)(argv+1), &config);
-	long bI = (long) buffer_index;
-	start_executing(slaves, total_slaves, buffer, &buffer_index, &config);
-	long be = (long) buffer_index;
-	//printf("%s\n", buffer);
-	printf("buffer_size: %ld\n", (be-bI));
+	
+	start_executing(slaves, total_slaves, buffer, &buffer_index, (char**)(argv+1), &config);
+	
+	printf("%s\n", buffer);
 	return 0;
 }
 
@@ -129,14 +130,16 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 	}
 }
 
-void start_executing(slave slaves[], int total_slaves, char * buffer, int * buffer_index, master_conf * conf) {
+void start_executing(slave slaves[], int total_slaves, char * buffer, int * buffer_index, char * files[], master_conf * conf) {
 	//Mientras queden files por procesar (done < total)
 	//Creo un fd set y lo lleno con los fd
 	//Hago un select
 	// Por cada fd listo, hago una lectura del fd y lo guardo en el buffer
 	// Luego de leer, me fijo si hay mas tareas para el slave, si hay, le paso por stdin otro archivo
 	// Sino, le paso null de parametro y lo mato, y cierro el fd
-	
+	if (conf == NULL) {
+		exit_error("ERROR: Conf is null");
+	}
 	while(conf->done_jobs < conf->total_jobs) {
 		fd_set set;
 		FD_ZERO(&set);
@@ -148,25 +151,33 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 			FD_SET(slaves[i].stdout_fd, &set);
 		}
 
+		/* To delete
 		struct timeval tv;
 		tv.tv_sec = 3;
 		tv.tv_usec = 0;
+		*/
 
 		// printf("LLegue aca 1\n");
-		int ready = select(max_fd + 1, &set, NULL, NULL, &tv);
-		// printf("LLegue aca 2, select = %d\n", ready);
-		if (ready == 0) {
-			continue;
-			
-		}
+		int ready = select(max_fd + 1, &set, NULL, NULL, NULL);
+		printf("LLegue aca 2, select = %d\n", ready);
+		if (ready == 0) continue;
 		for (int i = 0; i < total_slaves; i++) {
 			if (FD_ISSET(slaves[i].stdout_fd, &set)) {
-				printf("Child Activo: %d\t", slaves[i].pid);
-				char buff[1024];
-				int total_read = read(slaves[i].stdout_fd, buff, MAX_CHILD_BUFF_SIZE);
-				printf("%s", buff);
-				//fflush(slaves[i].stdout_fd);
-				write(slaves[i].stdin_fd, "Hola", 5);
+				//Leo
+				char buff[MAX_CHILD_BUFF_SIZE] = {0};
+				int dim = read(slaves[i].stdout_fd, buff, MAX_CHILD_BUFF_SIZE);
+				if (dim > 0) conf->done_jobs++;
+				printf("buffer: %s\n", buff);
+				strcpy((buffer + *(buffer_index)), buff);
+				*(buffer_index) += dim;
+
+				//Write
+				if (conf->assigned_jobs < conf->total_jobs) {
+					write(slaves[i].stdin_fd, files[conf->assigned_jobs], strlen(files[conf->assigned_jobs]) + 1);
+					conf->assigned_jobs++;
+				} else {
+					write(slaves[i].stdin_fd, NULL, 0);
+				}
 			} 
 		}
 	}

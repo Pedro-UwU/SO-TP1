@@ -54,3 +54,4 @@ dkms.conf
 dummy_slave
 main
 *.txt
+*.vscode
