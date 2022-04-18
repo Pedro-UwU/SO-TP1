@@ -56,3 +56,4 @@ main
 *.txt
 *.vscode
 slave
+.bash_history

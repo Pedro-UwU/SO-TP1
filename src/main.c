@@ -21,6 +21,7 @@
 
 #define MAX_BUFF_SIZE 65536
 #define MAX_CHILD_BUFF_SIZE 1024
+#define SLEEP_TIME 3
  
 
 //MACRO AND CONSTANT DEFINITIONS:
@@ -56,17 +57,19 @@ int main(int argc, char** argv){
 
 	int total_slaves = min(config.total_jobs, MAX_SLAVES);
 
+	printf("%d%c\n", config.total_jobs, 0);
+	sleep(SLEEP_TIME);
+
 	// Create the slaves Array and then initilize them
 
 	slave slaves[total_slaves];
 	init_slaves(slaves, total_slaves, (char**)(argv+1), &config);
-	
 	start_executing(slaves, total_slaves, buffer, &buffer_index, (char**)(argv+1), sem, &config);
 	
 	close_fds(slaves, total_slaves);
 	kill_slaves(total_slaves);
 
-	printf("%s\n", buffer);
+
 	fprintf(output_file, "%s\n", buffer);
 	
 
@@ -166,6 +169,7 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 		exit_error("ERROR: Conf is null");
 	}
 	while(conf->done_jobs < conf->total_jobs) {
+		
 		//printf("###########################################\nAssigned Jobs: %d, Done: %d, Total: %d\n", conf->assigned_jobs, conf->done_jobs, conf->total_jobs);
 		fd_set set;
 		FD_ZERO(&set);
@@ -187,6 +191,7 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 		int ready = select(max_fd + 1, &set, NULL, NULL, &tv);
 		//printf("Post select = %d\n", ready);
 		for (int i = 0; i < total_slaves; i++) {
+			
 			if (FD_ISSET(slaves[i].stdout_fd, &set)) {
 				//Leo
 				char buff[MAX_CHILD_BUFF_SIZE] = {0};
@@ -198,11 +203,11 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 				token = strtok(buff, SEPARATOR);
 				while (token != NULL) {
 					//printf("-------------------------\nLeyendo buffer de slave %d: %s\n",i, token);
-					int aux = -1;
 					
-					sem_wait(sem);
-					if (sprintf((buffer + *buffer_index), "%s\n", token) < 0) exit_error("ERROR: Sprintf");
-					*(buffer_index) += strlen(token) + 1;
+					
+					int wrote;
+					if ((wrote = sprintf((buffer + *buffer_index), "%s\n", token)) < 0) exit_error("ERROR: Sprintf");
+					*(buffer_index) += wrote;
 					conf->done_jobs++;
 					slaves[i].done_jobs++;
 					token = strtok(NULL, SEPARATOR);
@@ -221,6 +226,8 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 			} 
 		}
 	}
+	sem_post(sem);
+	sprintf((buffer+*(buffer_index)), "%c\n", END_CHAR);
 }	
 
 void close_fds(slave slaves[], int dim) {

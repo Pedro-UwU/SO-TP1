@@ -47,6 +47,7 @@ void waitForNew() {
         for (int j = 0; j < dim; j++) {
             buff[j] = 0;
         }
+        sleep(1);
     }
     
 }
