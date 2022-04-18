@@ -8,12 +8,7 @@ por stdin un archivo con el que continuar el procesamiento cuando termina con lo
 */
 
 //INCLUDE HEADER FILES AND STANDARD LIBRARIES
-#include "../include/slave.h"   //Configuration constants
-#include <stdio.h>
-#include <string.h>             //strcmp
-#include <stdlib.h>             
-#include <unistd.h>             //fork
-#include <sys/wait.h>           //wait, waitpid
+#include "../include/slave.h"   //Configuration constants and dependencies
 
 //CONSTANT DEFINITIONS USING #define
 #define MAX_INITIAL_FILES MAX_PARAMS - 1
@@ -22,7 +17,8 @@ por stdin un archivo con el que continuar el procesamiento cuando termina con lo
 #define STDIN 0                 //Stdin file descriptor
 #define STDOUT 1                //Stdout file descriptor
 #define CMD_MAX_LEN 750
-#define BUFF_MAX_LEN 65536      //Output read buffer len
+#define BUFF_MAX_LEN 65536      //Output read buffer maximum length
+#define PATH_MAX_LEN 4096       //File path maximum length
 
 #define MIN_PARAMS MIN_FILES + 1    //Minimum amount of command line parameters the slave program can take
 #if MIN_PARAMS < 2
@@ -36,14 +32,18 @@ por stdin un archivo con el que continuar el procesamiento cuando termina con lo
 #define MAX_PARAMS MIN_PARAMS
 #endif
 
+//MACRO DEFINITIONS:
+#define CLEAR_BUFFER((_buff_), (_len_)) { int macro_buffer_iterator = 0; for (; macro_buffer_iterator < (_len_); macro_buffer_iterator++){ (_buff_)[macro_buffer_iterator] = 0; } }
+
 //FUNCTION HEADERS:
-short processFile(char* filePath, pid_t* childPID, int* readFD);                    //This function executes the program that does the processing of the file
-int getFileDescriptor(pid_t pid, const pid_t* pidArray, const int* readFDArray, int dim);      //This function searches for a PID and returns its corresponding file descriptor, or -1 if the PID could not be found
+short processFile(char* filePath, pid_t* childPID, int* readFD);                                //This function executes the program that does the processing of the file
+int getFileDescriptor(pid_t pid, const pid_t* pidArray, const int* readFDArray, int dim);       //This function searches for a PID and returns its corresponding file descriptor, or -1 if the PID could not be found
+void output(int fd);                                                                            //This function receives a file descriptor and outputs its stream to stdout with a defined format. Closes the file descriptor
 
 int main (int argc, char** argv){
     //VALIDATE PARAMETERS
     if (argc < MIN_PARAMS || argc > MAX_PARAMS){                                    //This program receives up to 2 filePaths
-        return EXIT_FAILURE;
+        exit_error("Incorrect parameter amount.");
     }
     unsigned short initialFiles = argc - 1, i, processing = 0;
     #if MAX_PARAMS == 3
@@ -56,7 +56,7 @@ int main (int argc, char** argv){
     int readFDArray[initialFiles];
     for (i = 0; i < initialFiles; i++){
         if (processFile(argv[i + 1], &(pidArray[i]), &(readFDArray[i])) != 0){       //If processFile does not return 0, an error occurred
-            return EXIT_FAILURE;
+            exit_error("Error creating pipe.");
         }
         processing++;
     }
@@ -66,12 +66,21 @@ int main (int argc, char** argv){
     while (processing > 0){
         child = wait(NULL);                                                         //Wait for any child process to end
         fd = getFileDescriptor(child, pidArray, readFDArray, initialFiles);
-        //TODO: LLAMAR A MAIN
-        char buff[BUFF_MAX_LEN] = {0};
-        read(fd, buff, BUFF_MAX_LEN);
-        close(fd);                                                                  //After retrieving the returned information, the fd is no longer needed
-        puts(buff);
+        if (fd == -1){
+            exit_error("File Descriptor not found.");
+        }
+        output(fd);
         processing--;
+    }
+    //AFTER PROCESSING THE INITIAL FILES, ASK FOR A NEW FILE USING STDIN AND PROCESS IT.
+    char path[PATH_MAX_LEN] = {0};
+    scanf("%s", path);                                                              //The file path (or the terminate command) will be received via stdin
+    while (strcmp(path, TERMINATE_EXECUTION_CMD) != 0){                             //The program will end when the TERMINATE_EXECUTION_CMD is received
+        if(processFile(path, &child, &fd) != 0){
+            exit_error("Error creating pipe.");
+        }
+        waitpid(child, NULL, 0);
+        output(fd);
     }
     return EXIT_SUCCESS;
 }
@@ -112,4 +121,22 @@ int getFileDescriptor(pid_t pid, const pid_t* pidArray, const int* readFDArray, 
     return -1;
 }
 
-//FILE* writeEnd = fdopen(fd[PIPE_WRITE], "w");
+void output(int fd){
+    //READ FROM FILE DESCRIPTOR
+    static char buff[BUFF_MAX_LEN] = {0};
+    read(fd, buff, BUFF_MAX_LEN);
+    close(fd);                                                                      //After retrieving the returned information, the fd is no longer needed
+    //FORMAT OUTPUT STRING
+    int i = 0, j = 0;
+    while (buff[j] != '\0'){                                                        //Delete unnecesary spaces
+        if (buff[j] != ' ' || buff[j + 1] != ' '){
+            buff[i] = buff[j];
+            i++;
+        }
+        j++;
+    }
+    buff[i] = '\0';                                                                 //Put back the null terminator. If any non-zero chars are left after it, they will be set back to 0 anyway when CLEAR_BUFFER is called
+    puts(buff); //FORMATO
+    CLEAR_BUFFER(buff, BUFF_MAX_LEN)
+}
+//TODO: FORMATO LINEA 139
