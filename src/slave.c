@@ -81,6 +81,8 @@ int main (int argc, char** argv){
         }
         waitpid(child, NULL, 0);
         output(fd);
+        CLEAR_BUFFER(path, PATH_MAX_LEN)
+        scanf("%s", path);
     }
     return EXIT_SUCCESS;
 }
