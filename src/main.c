@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/select.h>
+#include <separator.h>
 
 #define MAX_BUFF_SIZE 65536
 #define MAX_CHILD_BUFF_SIZE 1024
@@ -52,7 +53,7 @@ int main(int argc, char** argv){
 	
 	start_executing(slaves, total_slaves, buffer, &buffer_index, (char**)(argv+1), &config);
 	
-	printf("%s\n", buffer);
+	//printf("%s\n", buffer);
 	return 0;
 }
 
@@ -116,6 +117,7 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 			slaves[i].pid = pid;
 			slaves[i].stdin_fd = input[FD_WRITE];
 			slaves[i].stdout_fd = output[FD_READ];
+			slaves[i].done_jobs = 0;
 
 			if (close(input[FD_READ]) == -1) {
 				exit_error("ERROR: Closing input read");
@@ -141,6 +143,7 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 		exit_error("ERROR: Conf is null");
 	}
 	while(conf->done_jobs < conf->total_jobs) {
+		//printf("###########################################\nAssigned Jobs: %d, Done: %d, Total: %d\n", conf->assigned_jobs, conf->done_jobs, conf->total_jobs);
 		fd_set set;
 		FD_ZERO(&set);
 		int max_fd = 0;
@@ -151,33 +154,49 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 			FD_SET(slaves[i].stdout_fd, &set);
 		}
 
-		/* To delete
+		
 		struct timeval tv;
 		tv.tv_sec = 3;
 		tv.tv_usec = 0;
-		*/
+	
 
-		// printf("LLegue aca 1\n");
-		int ready = select(max_fd + 1, &set, NULL, NULL, NULL);
-		printf("LLegue aca 2, select = %d\n", ready);
-		if (ready == 0) continue;
+		//printf("Pre select\n");
+		int ready = select(max_fd + 1, &set, NULL, NULL, &tv);
+		//printf("Post select = %d\n", ready);
+		if (ready == 0) {
+			//printf("TIMEOUT\n");
+			continue;
+		}
 		for (int i = 0; i < total_slaves; i++) {
 			if (FD_ISSET(slaves[i].stdout_fd, &set)) {
 				//Leo
 				char buff[MAX_CHILD_BUFF_SIZE] = {0};
 				int dim = read(slaves[i].stdout_fd, buff, MAX_CHILD_BUFF_SIZE);
-				if (dim > 0) conf->done_jobs++;
-				printf("buffer: %s\n", buff);
-				strcpy((buffer + *(buffer_index)), buff);
-				*(buffer_index) += dim;
+				if (dim == 0) {
+					continue;
+				}
+				char *token;
+				token = strtok(buff, SEPARATOR);
+				while (token != NULL) {
+					//printf("-------------------------\nLeyendo buffer de slave %d: %s\n",i, token);
+					strcpy((buffer + *(buffer_index)), token);
+					*(buffer_index) += strlen(token) + 1;
+					buffer[*(buffer_index)-1] = '\n';
+					conf->done_jobs++;
+					slaves[i].done_jobs++;
+					token = strtok(NULL, SEPARATOR);
+				}
 
 				//Write
 				if (conf->assigned_jobs < conf->total_jobs) {
+					//printf("Escribiendo en el buffer del slave %d: %s\n", i, files[conf->assigned_jobs]);
 					write(slaves[i].stdin_fd, files[conf->assigned_jobs], strlen(files[conf->assigned_jobs]) + 1);
 					conf->assigned_jobs++;
 				} else {
+					printf("Slave %d killed\n", slaves[i].pid);
 					write(slaves[i].stdin_fd, NULL, 0);
 				}
+				
 			} 
 		}
 	}

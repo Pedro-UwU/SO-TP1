@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <string.h>
+#include <separator.h>
 #define MAX_BUFF 1024
 
 void toUpper(char * name);
@@ -27,10 +28,12 @@ void toUpper(char * name) {
         name[i] = toupper(*(name + i));
         i++;
     }
-    printf("%s\n", name);
-    char buff2[2048] = {0};
-    sprintf(buff2, "ready_%s.txt", name);
-    fopen(buff2, "w");
+    printf("%s%s", name, SEPARATOR);
+
+    // to delete
+    //char buff2[2048] = {0};
+    //sprintf(buff2, "ready_%s.txt", name);
+    //fopen(buff2, "w");
 }
 
 void waitForNew() {
@@ -39,6 +42,8 @@ void waitForNew() {
     int dim;
     while((dim = read(STDIN_FILENO, buff, MAX_BUFF)) > 0) {
         toUpper(buff);
+
+        //Clean buffer
         for (int j = 0; j < dim; j++) {
             buff[j] = 0;
         }
