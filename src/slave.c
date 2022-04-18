@@ -3,17 +3,17 @@
 /*
 Archivo slave.c:
 Contiene todo el código de los programas esclavos que se encargarán de lanzar MiniSAT.
-El programa recibe como argumentos los dos archivos a procesar primero, y recibe luego
-por stdin un archivo con el que continuar el procesamiento cada vez que termina.
+El programa recibe como argumentos los archivos a procesar primero, y recibe luego
+por stdin un archivo con el que continuar el procesamiento cuando termina con los iniciales.
 */
 
 //INCLUDE HEADER FILES AND STANDARD LIBRARIES
 #include "../include/slave.h"   //Configuration constants
 #include <stdio.h>
-#include <string.h>             //strcmp, strcat, etc.
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/wait.h>
+#include <string.h>             //strcmp
+#include <stdlib.h>             
+#include <unistd.h>             //fork
+#include <sys/wait.h>           //wait, waitpid
 
 //CONSTANT DEFINITIONS USING #define
 #define MAX_INITIAL_FILES MAX_PARAMS - 1
@@ -22,7 +22,19 @@ por stdin un archivo con el que continuar el procesamiento cada vez que termina.
 #define STDIN 0                 //Stdin file descriptor
 #define STDOUT 1                //Stdout file descriptor
 #define CMD_MAX_LEN 750
-#define BUFF_MAX_LEN 65536       //Output read buffer len
+#define BUFF_MAX_LEN 65536      //Output read buffer len
+
+#define MIN_PARAMS MIN_FILES + 1    //Minimum amount of command line parameters the slave program can take
+#if MIN_PARAMS < 2
+#undef MIN_PARAMS
+#define MIN_PARAMS 2
+#endif
+
+#define MAX_PARAMS MAX_FILES + 1    //Maximum amount of command line parameters the slave program can take
+#if MAX_PARAMS < MIN_PARAMS
+#undef MAX_PARAMS
+#define MAX_PARAMS MIN_PARAMS
+#endif
 
 //FUNCTION HEADERS:
 short processFile(char* filePath, pid_t* childPID, int* readFD);                    //This function executes the program that does the processing of the file
@@ -101,10 +113,3 @@ int getFileDescriptor(pid_t pid, const pid_t* pidArray, const int* readFDArray, 
 }
 
 //FILE* writeEnd = fdopen(fd[PIPE_WRITE], "w");
-
-/*ESTADO:
-processFile listo
-TODO:
-    * Avisar a main cuando se termino un archivo
-        *Codigo para que siempre se mantenga con la cantidad maxima de minisats trabajando al mismo tiempo (tiene que pedir un nuevo archivo cada vez e iniciar un nuevo processFile, no puede ser bloqueante)
-*/
