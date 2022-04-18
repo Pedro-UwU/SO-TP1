@@ -98,7 +98,9 @@ short processFile(char* filePath, pid_t* childPID, int* readFD){
         return 1;
     }
     pid_t pid = fork();                                                             //Create a child process which will process the file
-
+    if (pid == -1){
+        exit_error("Fork error");
+    }
     //CHILD PROCESS ONLY
     if (pid == 0){
         char command[CMD_MAX_LEN];                                                  //Command the shell has to execute
