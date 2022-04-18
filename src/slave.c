@@ -33,7 +33,7 @@ por stdin un archivo con el que continuar el procesamiento cuando termina con lo
 #endif
 
 //MACRO DEFINITIONS:
-#define CLEAR_BUFFER((_buff_), (_len_)) { int macro_buffer_iterator = 0; for (; macro_buffer_iterator < (_len_); macro_buffer_iterator++){ (_buff_)[macro_buffer_iterator] = 0; } }
+#define CLEAR_BUFFER(_buff_, _len_) { int macro_buffer_iterator = 0; for (; macro_buffer_iterator < (_len_); macro_buffer_iterator++){ (_buff_)[macro_buffer_iterator] = 0; } }
 
 //FUNCTION HEADERS:
 short processFile(char* filePath, pid_t* childPID, int* readFD);                                //This function executes the program that does the processing of the file
