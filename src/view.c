@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <sys/semaphore.h>
+#include <semaphore.h>
 #include <error_handler.h>
 #include <unistd.h>
 

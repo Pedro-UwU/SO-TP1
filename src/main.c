@@ -13,8 +13,11 @@
 #include <utils.h>
 #include <unistd.h>
 #include <string.h>
+#include <shared_utils.h>
 #include <sys/select.h>
+#include <semaphore.h>
 #include <separator.h>
+#include <sys/wait.h>
 
 #define MAX_BUFF_SIZE 65536
 #define MAX_CHILD_BUFF_SIZE 1024
@@ -34,15 +37,22 @@ int main(int argc, char** argv){
 	config.assigned_jobs = 0;
 	config.done_jobs = 0;
 
+	
+
+
 	// Initialize file to write the results
 	FILE * output_file = fopen(OUTPUT_FILE, "w");
 	if (output_file == NULL) {
 		exit_error("ERROR opening output file");
 	}
+
+	//printf("Argumentos: %d\n", argc);
 	
 	/* temp */
-	char buffer[MAX_BUFF_SIZE] = {0};
+	char * buffer = (char*)open_shm(SHM_SIZE);
 	int buffer_index = 0;
+
+	sem_t * sem = open_sem(SEM_NAME);
 
 	int total_slaves = min(config.total_jobs, MAX_SLAVES);
 
@@ -51,9 +61,22 @@ int main(int argc, char** argv){
 	slave slaves[total_slaves];
 	init_slaves(slaves, total_slaves, (char**)(argv+1), &config);
 	
-	start_executing(slaves, total_slaves, buffer, &buffer_index, (char**)(argv+1), &config);
+	start_executing(slaves, total_slaves, buffer, &buffer_index, (char**)(argv+1), sem, &config);
 	
-	//printf("%s\n", buffer);
+	close_fds(slaves, total_slaves);
+	kill_slaves(total_slaves);
+
+	printf("%s\n", buffer);
+	fprintf(output_file, "%s\n", buffer);
+	
+
+	close_shm((void *)buffer, SHM_NAME, SHM_SIZE);
+	close_sem(sem);
+
+	
+	//printf("Largo: %d\n", strlen(buffer));
+	fclose(output_file);	
+
 	return 0;
 }
 
@@ -132,7 +155,7 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 	}
 }
 
-void start_executing(slave slaves[], int total_slaves, char * buffer, int * buffer_index, char * files[], master_conf * conf) {
+void start_executing(slave slaves[], int total_slaves, char * buffer, int * buffer_index, char * files[], sem_t * sem, master_conf * conf) {
 	//Mientras queden files por procesar (done < total)
 	//Creo un fd set y lo lleno con los fd
 	//Hago un select
@@ -163,10 +186,6 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 		//printf("Pre select\n");
 		int ready = select(max_fd + 1, &set, NULL, NULL, &tv);
 		//printf("Post select = %d\n", ready);
-		if (ready == 0) {
-			//printf("TIMEOUT\n");
-			continue;
-		}
 		for (int i = 0; i < total_slaves; i++) {
 			if (FD_ISSET(slaves[i].stdout_fd, &set)) {
 				//Leo
@@ -179,21 +198,23 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 				token = strtok(buff, SEPARATOR);
 				while (token != NULL) {
 					//printf("-------------------------\nLeyendo buffer de slave %d: %s\n",i, token);
-					strcpy((buffer + *(buffer_index)), token);
+					int aux = -1;
+					
+					sem_wait(sem);
+					if (sprintf((buffer + *buffer_index), "%s\n", token) < 0) exit_error("ERROR: Sprintf");
 					*(buffer_index) += strlen(token) + 1;
-					buffer[*(buffer_index)-1] = '\n';
 					conf->done_jobs++;
 					slaves[i].done_jobs++;
 					token = strtok(NULL, SEPARATOR);
+					sem_post(sem);
 				}
 
 				//Write
 				if (conf->assigned_jobs < conf->total_jobs) {
-					//printf("Escribiendo en el buffer del slave %d: %s\n", i, files[conf->assigned_jobs]);
+					// printf("Escribiendo en el buffer del slave %d: %s\n", i, files[conf->assigned_jobs]);
 					write(slaves[i].stdin_fd, files[conf->assigned_jobs], strlen(files[conf->assigned_jobs]) + 1);
 					conf->assigned_jobs++;
 				} else {
-					printf("Slave %d killed\n", slaves[i].pid);
 					write(slaves[i].stdin_fd, NULL, 0);
 				}
 				
@@ -201,3 +222,23 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 		}
 	}
 }	
+
+void close_fds(slave slaves[], int dim) {
+	for (int i = 0; i < dim; i++) {
+		if (close(slaves[i].stdin_fd) == -1) {
+			exit_error("ERROR closing stdin fd");
+		}
+
+		if (close(slaves[i].stdout_fd) == -1) {
+			exit_error("ERROR close stdout fd");
+		}
+	}
+}
+
+void kill_slaves(int dim) {
+	for (int i = 0; i < dim; i++) {
+		if (wait(NULL) == -1) {
+			exit_error("ERROR waiting for child process");
+		}
+	}
+}

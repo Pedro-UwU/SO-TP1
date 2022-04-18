@@ -2,10 +2,8 @@
 #define ERROR_HANDLER
 #include <stdio.h>
 #include <stdlib.h>
+#define ERROR -1
 
-void exit_error(char * msg) {
-    fprintf(stderr, "%s\n", msg);
-    exit(1);
-}
+void exit_error(char * msg);
 
 #endif
