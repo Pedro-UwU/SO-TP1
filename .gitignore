@@ -57,3 +57,4 @@ main
 *.vscode
 slave
 .bash_history
+*.cnf

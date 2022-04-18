@@ -57,7 +57,7 @@ int main(int argc, char** argv){
 
 	int total_slaves = min(config.total_jobs, MAX_SLAVES);
 
-	printf("%d%c\n", config.total_jobs, 0);
+	printf("%d%c", config.total_jobs, 0);
 	sleep(SLEEP_TIME);
 
 	// Create the slaves Array and then initilize them
@@ -70,7 +70,7 @@ int main(int argc, char** argv){
 	kill_slaves(total_slaves);
 
 
-	fprintf(output_file, "%s\n", buffer);
+	fprintf(output_file, "%s", buffer);
 	
 
 	close_shm((void *)buffer, SHM_NAME, SHM_SIZE);
@@ -206,7 +206,7 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 					
 					
 					int wrote;
-					if ((wrote = sprintf((buffer + *buffer_index), "%s\n", token)) < 0) exit_error("ERROR: Sprintf");
+					if ((wrote = sprintf((buffer + *buffer_index), "%s", token)) < 0) exit_error("ERROR: Sprintf");
 					*(buffer_index) += wrote;
 					conf->done_jobs++;
 					slaves[i].done_jobs++;
@@ -227,7 +227,7 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 		}
 	}
 	sem_post(sem);
-	sprintf((buffer+*(buffer_index)), "%c\n", END_CHAR);
+	sprintf((buffer+*(buffer_index)), "%c", END_CHAR);
 }	
 
 void close_fds(slave slaves[], int dim) {

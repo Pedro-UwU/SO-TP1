@@ -9,7 +9,7 @@ por stdin un archivo con el que continuar el procesamiento cuando termina con lo
 
 //INCLUDE HEADER FILES AND STANDARD LIBRARIES
 #include "../include/slave.h"   //Configuration constants and dependencies
-
+#include <separator.h>
 //CONSTANT DEFINITIONS USING #define
 #define MAX_INITIAL_FILES MAX_PARAMS - 1
 #define PIPE_READ 0             //Read end of pipes
@@ -74,8 +74,10 @@ int main (int argc, char** argv){
     }
     //AFTER PROCESSING THE INITIAL FILES, ASK FOR A NEW FILE USING STDIN AND PROCESS IT.
     char path[PATH_MAX_LEN] = {0};
-    scanf("%s", path);                                                              //The file path (or the terminate command) will be received via stdin
-    while (strcmp(path, TERMINATE_EXECUTION_CMD) != 0){                             //The program will end when the TERMINATE_EXECUTION_CMD is received
+    int dim = 0;
+    //scanf("%s", path);                                                              //The file path (or the terminate command) will be received via stdin
+    //while (strcmp(path, TERMINATE_EXECUTION_CMD) != 0){                             //The program will end when the TERMINATE_EXECUTION_CMD is received
+    while((dim = read(STDIN, path, PATH_MAX_LEN)) > 0) {
         if(processFile(path, &child, &fd) != 0){
             exit_error("Error creating pipe.");
         }
@@ -110,6 +112,7 @@ short processFile(char* filePath, pid_t* childPID, int* readFD){
     close(fd[PIPE_WRITE]);                                                          //Close unused file descriptor
     *childPID = pid;                                                                //Return the pid and fd of the child process
     *readFD = fd[PIPE_READ];
+
     return 0;                                                                       //No errors occurred
 }
 
@@ -137,8 +140,14 @@ void output(int fd){
         }
         j++;
     }
-    buff[i] = '\0';                                                                 //Put back the null terminator. If any non-zero chars are left after it, they will be set back to 0 anyway when CLEAR_BUFFER is called
-    puts(buff); //FORMATO
+    // buff[i] = '\0';                                                                 //Put back the null terminator. If any non-zero chars are left after it, they will be set back to 0 anyway when CLEAR_BUFFER is called
+    // puts(buff); //FORMATO
+    int printed = printf("%s%s", buff, SEPARATOR);
+    char name[100];
+    sprintf(name, "test_%d.txt", printed);
+    FILE * aux = fopen(name, "w");
+    fprintf(aux, "%s", buff);
+    fclose(aux);
     CLEAR_BUFFER(buff, BUFF_MAX_LEN)
 }
 //TODO: FORMATO LINEA 139

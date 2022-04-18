@@ -7,7 +7,7 @@
 #define SHM_SIZE 65536
 #define SHM_NAME "shared_buffer"
 #define SEM_NAME "docker1"
-#define END_CHAR 4
+#define END_CHAR '~'
 
 void *open_shm(size_t shm_size);
 sem_t *open_sem(const char *sem_name);
