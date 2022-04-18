@@ -22,7 +22,11 @@ por stdin un archivo con el que continuar el procesamiento cuando termina con lo
 #define MIN_FILES 1                    //Minimum amount of initial input files the slave program can take
 #define MAX_FILES 2                    //Maximum amount of initial input files the slave program can take
 
-#define EXEC_CMD "minisat"              //Command that will be executed
+#define EXEC_CMD "minisat"             //Command that will be executed
 #define GREP_PARSE_CMD "grep -o -e \"Number of .*[0-9]\\+\" -e \"CPU time.*\" -e \".*SATISFIABLE\"" //Parser
+
+#define TERMINATE_EXECUTION_CMD "@terminate"
+//When the initial files are done processing, the slave program will wait until a path to a new file to
+//process is received via stdin. To terminate this cycle, you must write TERMINATE_EXECUTION_CMD to its stdin.
 
 #endif //SLAVE_H
