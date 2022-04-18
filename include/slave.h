@@ -13,7 +13,7 @@ por stdin un archivo con el que continuar el procesamiento cuando termina con lo
 #include <stdlib.h>             
 #include <unistd.h>             //fork
 #include <sys/wait.h>           //wait, waitpid
-#include "../error_handler.h"
+#include "../include/error_handler.h"
 
 //CONFIGURATION CONSTANTS:
 #ifndef SLAVE_H
