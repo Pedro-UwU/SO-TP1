@@ -7,6 +7,15 @@ El programa recibe como argumentos los archivos a procesar primero, y recibe lue
 por stdin un archivo con el que continuar el procesamiento cuando termina con los iniciales.
 */
 
+//DEPENDENCIES:
+#include <stdio.h>
+#include <string.h>             //strcmp
+#include <stdlib.h>             
+#include <unistd.h>             //fork
+#include <sys/wait.h>           //wait, waitpid
+#include "../error_handler.h"
+
+//CONFIGURATION CONSTANTS:
 #ifndef SLAVE_H
 #define SLAVE_H
 
