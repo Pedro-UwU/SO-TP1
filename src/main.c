@@ -81,10 +81,10 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 	// Fork anc exec each slave
 	// Save each slave pid, pipe in and pipe out in the array
 	int total_execv_params = INITIAL_FILES;
-			if (total_slaves < MAX_SLAVES) {
-				total_execv_params = 1;
-			}
-			char * params[total_execv_params + 2];
+	if (total_slaves < MAX_SLAVES) {
+		total_execv_params = 1;
+	}
+	char * params[total_execv_params + 2];
 	for (int i = 0; i < total_slaves; i++) {
 		int input[2]; //Pipe for passing the paths
 		int output[2]; //Pipe for receiving the ouputs
