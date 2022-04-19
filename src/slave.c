@@ -10,6 +10,7 @@ por stdin un archivo con el que continuar el procesamiento cuando termina con lo
 //INCLUDE HEADER FILES AND STANDARD LIBRARIES
 #include "../include/slave.h"   //Configuration constants and dependencies
 #include <separator.h>
+
 //CONSTANT DEFINITIONS USING #define
 #define MAX_INITIAL_FILES MAX_PARAMS - 1
 #define PIPE_READ 0             //Read end of pipes
@@ -74,10 +75,12 @@ int main (int argc, char** argv){
     }
     //AFTER PROCESSING THE INITIAL FILES, ASK FOR A NEW FILE USING STDIN AND PROCESS IT.
     char path[PATH_MAX_LEN] = {0};
-    int dim = 0;
-    //scanf("%s", path);                                                              //The file path (or the terminate command) will be received via stdin
-    //while (strcmp(path, TERMINATE_EXECUTION_CMD) != 0){                             //The program will end when the TERMINATE_EXECUTION_CMD is received
-    while((dim = read(STDIN, path, PATH_MAX_LEN)) > 0) {
+    ///////////////////////////////////////////////////////////////////
+    //int dim = 0;
+    scanf("%s", path);                                                              //The file path (or the terminate command) will be received via stdin
+    while (strcmp(path, TERMINATE_EXECUTION_CMD) != 0){                             //The program will end when the TERMINATE_EXECUTION_CMD is received
+    //while((dim = read(STDIN, path, PATH_MAX_LEN)) > 0) {
+    ///////////////////////////////////////////////////////////////////
         if(processFile(path, &child, &fd) != 0){
             exit_error("Error creating pipe.");
         }
@@ -95,21 +98,29 @@ short processFile(char* filePath, pid_t* childPID, int* readFD){
         return 1;
     }
     pid_t pid = fork();                                                             //Create a child process which will process the file
-
+    if (pid == -1){
+        exit_error("Fork error");
+    }
     //CHILD PROCESS ONLY
     if (pid == 0){
         char command[CMD_MAX_LEN];                                                  //Command the shell has to execute
         snprintf(command, CMD_MAX_LEN, "%s %s | %s", EXEC_CMD, filePath, GREP_PARSE_CMD);
-        close(fd[PIPE_READ]);                                                       //Close unused file descriptor
+        if(close(fd[PIPE_READ]) == -1){                                             //Close unused file descriptor
+            exit_error("Error closing file descriptor");
+        }
         dup2(fd[PIPE_WRITE], STDOUT);                                               //Makes the processing program print to the pipe instead of stdout
-        close(fd[PIPE_WRITE]);                                                      //Close unused file descriptor (from now on, only stdout will be used by the child process)
+        if(close(fd[PIPE_WRITE]) == -1){                                            //Close unused file descriptor (from now on, only stdout will be used by the child process)
+            exit_error("Error closing file descriptor");
+        }
         execlp("/bin/sh" /*Exec*/, "/bin/sh" /*First arg is executable name*/,      //The child executes the processing program
             "-c" /*Read command from argument string*/,  command /*CMD to be executed*/,
             (char*) NULL /*NULL terminator*/);
     }                                                                               //Nothing is executed beyond the exec instruction in the child process
 
     //PARENT PROCESS ONLY
-    close(fd[PIPE_WRITE]);                                                          //Close unused file descriptor
+    if(close(fd[PIPE_WRITE]) == -1){                                                //Close unused file descriptor
+        exit_error("Error closing file descriptor");
+    }
     *childPID = pid;                                                                //Return the pid and fd of the child process
     *readFD = fd[PIPE_READ];
 
@@ -130,7 +141,9 @@ void output(int fd){
     //READ FROM FILE DESCRIPTOR
     static char buff[BUFF_MAX_LEN] = {0};
     read(fd, buff, BUFF_MAX_LEN);
-    close(fd);                                                                      //After retrieving the returned information, the fd is no longer needed
+    if(close(fd) == -1){                                                            //After retrieving the returned information, the fd is no longer needed
+        exit_error("Error closing file descriptor");
+    }
     //FORMAT OUTPUT STRING
     int i = 0, j = 0;
     while (buff[j] != '\0'){                                                        //Delete unnecesary spaces
@@ -140,14 +153,16 @@ void output(int fd){
         }
         j++;
     }
-    // buff[i] = '\0';                                                                 //Put back the null terminator. If any non-zero chars are left after it, they will be set back to 0 anyway when CLEAR_BUFFER is called
-    // puts(buff); //FORMATO
-    int printed = printf("%s%s", buff, SEPARATOR);
+    ///////////////////////////////////////////////////////////////////
+    buff[i] = '\0';                                                                 //Put back the null terminator. If any non-zero chars are left after it, they will be set back to 0 anyway when CLEAR_BUFFER is called
+    puts(buff); //FORMATO
+    /*int printed = printf("%s%s", buff, SEPARATOR);
     char name[100];
     sprintf(name, "test_%d.txt", printed);
     FILE * aux = fopen(name, "w");
     fprintf(aux, "%s", buff);
-    fclose(aux);
+    fclose(aux);*/
+    ///////////////////////////////////////////////////////////////////
     CLEAR_BUFFER(buff, BUFF_MAX_LEN)
 }
 //TODO: FORMATO LINEA 139
