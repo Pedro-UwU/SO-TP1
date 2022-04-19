@@ -7,7 +7,7 @@
 #define STDIN 0
 #define STDOUT 1
 #define INITIAL_FILES 2
-#define SLAVE_COMMAND "./slave"
+#define SLAVE_COMMAND "./dummy_slave"
 
 #include <semaphore.h>
 
