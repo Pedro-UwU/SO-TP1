@@ -81,6 +81,11 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 	// dup2 each pipe
 	// Fork anc exec each slave
 	// Save each slave pid, pipe in and pipe out in the array
+	int total_execv_params = INITIAL_FILES;
+			if (total_slaves < MAX_SLAVES) {
+				total_execv_params = 1;
+			}
+			char * params[total_execv_params + 2];
 	for (int i = 0; i < total_slaves; i++) {
 		int input[2]; //Pipe for passing the paths
 		int output[2]; //Pipe for receiving the ouputs
@@ -122,9 +127,9 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 			}
 
 			//Create the execv params
-			char * params[INITIAL_FILES + 2];
+			
 			params[0] = SLAVE_COMMAND;
-			for (int j = 0; j < INITIAL_FILES; j++) {
+			for (int j = 0; j < total_execv_params; j++) {
 				params[j+1] = files[conf->assigned_jobs];
 				conf->assigned_jobs++;
 			}
@@ -146,6 +151,9 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 
 			//Add INITIAL_FILES because it didn't change in the parent
 			conf->assigned_jobs += INITIAL_FILES;
+			if (conf->assigned_jobs > conf->total_jobs) {
+				conf->assigned_jobs = conf->total_jobs;
+			}
 		}
 	}
 }
@@ -161,7 +169,6 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 		exit_error("ERROR: Conf is null");
 	}
 	while(conf->done_jobs < conf->total_jobs) {
-		
 		fd_set set;
 		FD_ZERO(&set);
 		int max_fd = 0;
