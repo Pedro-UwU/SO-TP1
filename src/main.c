@@ -19,7 +19,6 @@
 #include <separator.h>
 #include <sys/wait.h>
 
-#define MAX_BUFF_SIZE 65536
 #define MAX_CHILD_BUFF_SIZE 1024
 #define SLEEP_TIME 3
  
