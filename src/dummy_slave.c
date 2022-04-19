@@ -27,6 +27,7 @@ int main(int argc, char const *argv[])
     }
 
     waitForNew();
+    return 0;
 }
 
 void execute_file(char * name) {
