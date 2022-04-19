@@ -11,7 +11,7 @@
 #define GREP_PARSE_CMD "grep -o -e \"Number of .*[0-9]\\+\" -e \"CPU time.*\" -e \".*SATISFIABLE\"" //Parser
 
 
-void toUpper(char * name);
+void execute_file(char * name);
 
 void waitForNew();
 
@@ -21,13 +21,13 @@ int main(int argc, char const *argv[])
 
     int total_args = argc - 1;
     for (int i = 1; i <= total_args; i++) {
-        toUpper((char*)argv[i]);
+        execute_file((char*)argv[i]);
     }
 
     waitForNew();
 }
 
-void toUpper(char * name) {
+void execute_file(char * name) {
 
     char command[COMMAND_BUFF];
     sprintf(command, "%s %s | %s", EXEC_CMD, name, GREP_PARSE_CMD);
@@ -48,7 +48,7 @@ void waitForNew() {
     //create_file("before_reading");
     int dim;
     while((dim = read(STDIN_FILENO, buff, MAX_BUFF)) > 0) {
-        toUpper(buff);
+        execute_file(buff);
 
         //Clean buffer
         for (int j = 0; j < dim; j++) {
