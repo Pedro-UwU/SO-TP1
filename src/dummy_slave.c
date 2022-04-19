@@ -40,7 +40,7 @@ void toUpper(char * name) {
 
     char output_str[MAX_BUFF];
     fread(output_str, sizeof(char), MAX_BUFF, output);
-    printf("Filename: %s\nPID: %d\n%s%s\n", name, getpid(), output_str, SEPARATOR);
+    printf("Filename: %s\nPID: %d\n%s%s", name, getpid(), output_str, SEPARATOR);
 }
 
 void waitForNew() {

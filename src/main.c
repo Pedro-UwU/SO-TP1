@@ -46,10 +46,7 @@ int main(int argc, char** argv){
 	if (output_file == NULL) {
 		exit_error("ERROR opening output file");
 	}
-
-	//printf("Argumentos: %d\n", argc);
 	
-	/* temp */
 	char * buffer = (char*)open_shm(SHM_SIZE);
 	int buffer_index = 0;
 
@@ -57,7 +54,6 @@ int main(int argc, char** argv){
 
 	int total_slaves = min(config.total_jobs, MAX_SLAVES);
 
-	printf("%d%c", config.total_jobs, 0);
 	sleep(SLEEP_TIME);
 
 	// Create the slaves Array and then initilize them
@@ -69,15 +65,11 @@ int main(int argc, char** argv){
 	close_fds(slaves, total_slaves);
 	kill_slaves(total_slaves);
 
-
 	fprintf(output_file, "%s", buffer);
-	
 
 	close_shm((void *)buffer, SHM_NAME, SHM_SIZE);
 	close_sem(sem);
 
-	
-	//printf("Largo: %d\n", strlen(buffer));
 	fclose(output_file);	
 
 	return 0;
@@ -170,7 +162,6 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 	}
 	while(conf->done_jobs < conf->total_jobs) {
 		
-		//printf("###########################################\nAssigned Jobs: %d, Done: %d, Total: %d\n", conf->assigned_jobs, conf->done_jobs, conf->total_jobs);
 		fd_set set;
 		FD_ZERO(&set);
 		int max_fd = 0;
@@ -185,11 +176,8 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 		struct timeval tv;
 		tv.tv_sec = 3;
 		tv.tv_usec = 0;
-	
 
-		//printf("Pre select\n");
-		int ready = select(max_fd + 1, &set, NULL, NULL, &tv);
-		//printf("Post select = %d\n", ready);
+		select(max_fd + 1, &set, NULL, NULL, &tv);
 		for (int i = 0; i < total_slaves; i++) {
 			
 			if (FD_ISSET(slaves[i].stdout_fd, &set)) {
@@ -202,11 +190,8 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 				char *token;
 				token = strtok(buff, SEPARATOR);
 				while (token != NULL) {
-					//printf("-------------------------\nLeyendo buffer de slave %d: %s\n",i, token);
-					
-					
 					int wrote;
-					if ((wrote = sprintf((buffer + *buffer_index), "%s", token)) < 0) exit_error("ERROR: Sprintf");
+					if ((wrote = sprintf((buffer + *buffer_index), "%s\n", token)) < 0) exit_error("ERROR: Sprintf");
 					*(buffer_index) += wrote;
 					conf->done_jobs++;
 					slaves[i].done_jobs++;
@@ -216,7 +201,6 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 
 				//Write
 				if (conf->assigned_jobs < conf->total_jobs) {
-					// printf("Escribiendo en el buffer del slave %d: %s\n", i, files[conf->assigned_jobs]);
 					write(slaves[i].stdin_fd, files[conf->assigned_jobs], strlen(files[conf->assigned_jobs]) + 1);
 					conf->assigned_jobs++;
 				} else {
