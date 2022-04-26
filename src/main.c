@@ -86,6 +86,12 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 	if (total_slaves < MAX_SLAVES) {
 		total_execv_params = 1;
 	}
+	if (conf->total_jobs > total_slaves && conf->total_jobs < INITIAL_FILES * total_slaves) {
+		printf("ASD2\n");
+	 	total_execv_params = 1;
+	}
+	printf("Total params per slave: %d\n", total_execv_params);
+	printf("Total jobs: %d\n", conf->total_jobs);
 	char * params[total_execv_params + 2];
 	for (int i = 0; i < total_slaves; i++) {
 		int input[2]; //Pipe for passing the paths
@@ -134,7 +140,7 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 				params[j+1] = files[conf->assigned_jobs];
 				conf->assigned_jobs++;
 			}
-			params[INITIAL_FILES + 1] = NULL;
+			params[total_execv_params + 1] = NULL;
 			execv(params[0], params);
 			exit_error("ERROR: Execv");
 		default:
@@ -151,7 +157,7 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 			}
 
 			//Add INITIAL_FILES because it didn't change in the parent
-			conf->assigned_jobs += INITIAL_FILES;
+			conf->assigned_jobs += total_execv_params;
 			if (conf->assigned_jobs > conf->total_jobs) {
 				conf->assigned_jobs = conf->total_jobs;
 			}
