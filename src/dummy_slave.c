@@ -23,6 +23,7 @@ int main(int argc, char const *argv[])
 
     int total_args = argc - 1;
     for (int i = 1; i <= total_args; i++) {
+        
         execute_file((char*)argv[i]);
     }
 

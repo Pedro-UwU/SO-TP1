@@ -61,6 +61,10 @@ int main(int argc, char** argv){
 
 	slave slaves[total_slaves];
 	init_slaves(slaves, total_slaves, (char**)(argv+1), &config);
+	printf("Total slaves: %d\n", total_slaves);
+	for (int i = 0; i < total_slaves; i++) {
+		printf("SLAVE %d, PID: %d, stdin: %d, stdout: %d\n", i, slaves[i].pid, slaves[i].stdin_fd, slaves[i].stdout_fd);
+	}
 	start_executing(slaves, total_slaves, buffer, &buffer_index, (char**)(argv+1), sem, &config);
 	
 	close_fds(slaves, total_slaves);
@@ -86,7 +90,11 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 	if (total_slaves < MAX_SLAVES) {
 		total_execv_params = 1;
 	}
+	// if (conf->total_jobs >= total_slaves && conf->total_jobs <  INITIAL_FILES * total_slaves) {
+	// 	total_execv_params = 1;
+	// }
 	char * params[total_execv_params + 2];
+	
 	for (int i = 0; i < total_slaves; i++) {
 		int input[2]; //Pipe for passing the paths
 		int output[2]; //Pipe for receiving the ouputs
@@ -96,14 +104,26 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 		if (pipe(output) == -1) {
 			exit_error("ERROR: Creating output pipe");
 		}
+
+		printf("slave[%d], input_read: %d, input_write: %d, output_read %d, output_write %d\n", i, input[FD_READ], input[FD_WRITE], output[FD_READ], output[FD_WRITE]);
 		
 		int pid = fork();
+		//Create the execv params
+			
+			params[0] = SLAVE_COMMAND;
+			for (int j = 0; j < total_execv_params; j++) {
+				params[j+1] = files[conf->assigned_jobs];
+				conf->assigned_jobs++;
+			}
+			params[total_execv_params + 1] = NULL;
 		switch (pid)
 		{
 		case -1:
 			exit_error("ERROR: Forking");
 		case 0: // Child
+		
 			//Close the unncesary ends
+
 			if (close(input[FD_WRITE]) == -1) {
 				exit_error("ERROR: Closing input fd write end");
 			}
@@ -127,14 +147,8 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 				exit_error("ERROR: Closing output file descriptor write end");
 			}
 
-			//Create the execv params
+
 			
-			params[0] = SLAVE_COMMAND;
-			for (int j = 0; j < total_execv_params; j++) {
-				params[j+1] = files[conf->assigned_jobs];
-				conf->assigned_jobs++;
-			}
-			params[INITIAL_FILES + 1] = NULL;
 			execv(params[0], params);
 			exit_error("ERROR: Execv");
 		default:
@@ -151,10 +165,10 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 			}
 
 			//Add INITIAL_FILES because it didn't change in the parent
-			conf->assigned_jobs += INITIAL_FILES;
-			if (conf->assigned_jobs > conf->total_jobs) {
-				conf->assigned_jobs = conf->total_jobs;
-			}
+			// conf->assigned_jobs += total_execv_params;
+			// if (conf->assigned_jobs > conf->total_jobs) {
+			// 	conf->assigned_jobs = conf->total_jobs;
+			// }
 		}
 	}
 }
@@ -170,6 +184,7 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 		exit_error("ERROR: Conf is null");
 	}
 	while(conf->done_jobs < conf->total_jobs) {
+		printf("Done: %d - Assig: %d\n", conf->done_jobs, conf->assigned_jobs);
 		fd_set set;
 		FD_ZERO(&set);
 		int max_fd = 0;
@@ -177,6 +192,7 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 			if (max_fd < slaves[i].stdout_fd) {
 				max_fd = slaves[i].stdout_fd;
 			}
+			printf("Slave %i stdout: %d\n", i, slaves[i].stdout_fd);
 			FD_SET(slaves[i].stdout_fd, &set);
 		}
 
@@ -185,10 +201,12 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 		tv.tv_sec = 3;
 		tv.tv_usec = 0;
 
-		select(max_fd + 1, &set, NULL, NULL, &tv);
+		printf("SELECT: %d\n", select(max_fd + 1, &set, NULL, NULL, &tv));
+		
 		for (int i = 0; i < total_slaves; i++) {
 			
 			if (FD_ISSET(slaves[i].stdout_fd, &set)) {
+				
 				//Leo
 				char buff[MAX_CHILD_BUFF_SIZE] = {0};
 				int dim = read(slaves[i].stdout_fd, buff, MAX_CHILD_BUFF_SIZE);
@@ -198,6 +216,7 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 				char *token;
 				token = strtok(buff, SEPARATOR);
 				while (token != NULL) {
+					printf("Slave[%d], pid: %d, output: %s\n", i, slaves[i].pid, token);
 					int wrote;
 					if ((wrote = sprintf((buffer + *buffer_index), "%s\n", token)) < 0) exit_error("ERROR: Sprintf");
 					*(buffer_index) += wrote;
@@ -209,6 +228,7 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 
 				//Write
 				if (conf->assigned_jobs < conf->total_jobs) {
+					printf("Writing to slave[%d], pid: %d, file: %s", i, slaves[i].pid, files[conf->assigned_jobs]);
 					write(slaves[i].stdin_fd, files[conf->assigned_jobs], strlen(files[conf->assigned_jobs]) + 1);
 					conf->assigned_jobs++;
 				} else {

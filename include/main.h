@@ -1,6 +1,6 @@
 #ifndef MAIN_H
 #define MAIN_H
-#define MAX_SLAVES 2
+#define MAX_SLAVES 1
 #define OUTPUT_FILE "output.txt"
 #define FD_WRITE 1
 #define FD_READ 0
