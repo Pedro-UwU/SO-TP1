@@ -1,6 +1,6 @@
 #ifndef SEPARATOR_H
 #define SEPARATOR_H
 
-#define SEPARATOR "(<----->)"
+#define SEPARATOR "#############"
 
 #endif

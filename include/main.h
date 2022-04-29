@@ -1,6 +1,6 @@
 #ifndef MAIN_H
 #define MAIN_H
-#define MAX_SLAVES 2
+#define MAX_SLAVES 8
 #define OUTPUT_FILE "output.txt"
 #define FD_WRITE 1
 #define FD_READ 0
@@ -23,6 +23,7 @@ typedef struct slave {
     int stdin_fd;
     int stdout_fd;
     int done_jobs;
+    int assigned_jobs;
 } slave;
 
 void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf * conf);

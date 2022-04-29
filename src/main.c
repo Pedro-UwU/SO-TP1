@@ -87,11 +87,8 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 		total_execv_params = 1;
 	}
 	if (conf->total_jobs > total_slaves && conf->total_jobs < INITIAL_FILES * total_slaves) {
-		printf("ASD2\n");
 	 	total_execv_params = 1;
 	}
-	printf("Total params per slave: %d\n", total_execv_params);
-	printf("Total jobs: %d\n", conf->total_jobs);
 	char * params[total_execv_params + 2];
 	for (int i = 0; i < total_slaves; i++) {
 		int input[2]; //Pipe for passing the paths
@@ -109,6 +106,16 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 		case -1:
 			exit_error("ERROR: Forking");
 		case 0: // Child
+
+			for (int k = 0; k < i; k++) {
+				if (close(slaves[k].stdin_fd) == -1) {
+					exit_error("ERROR: Closing input fd of previous slave");
+				}
+				if (close(slaves[k].stdout_fd) == -1) {
+					exit_error("ERROR: Closing output fd of previous slave");
+				}
+			}
+
 			//Close the unncesary ends
 			if (close(input[FD_WRITE]) == -1) {
 				exit_error("ERROR: Closing input fd write end");
@@ -148,6 +155,7 @@ void init_slaves(slave * slaves, int total_slaves, char * files[], master_conf *
 			slaves[i].stdin_fd = input[FD_WRITE];
 			slaves[i].stdout_fd = output[FD_READ];
 			slaves[i].done_jobs = 0;
+			slaves[i].assigned_jobs = total_execv_params;
 
 			if (close(input[FD_READ]) == -1) {
 				exit_error("ERROR: Closing input read");
@@ -209,14 +217,16 @@ void start_executing(slave slaves[], int total_slaves, char * buffer, int * buff
 					*(buffer_index) += wrote;
 					conf->done_jobs++;
 					slaves[i].done_jobs++;
+					slaves[i].assigned_jobs--;
 					token = strtok(NULL, SEPARATOR);
 					sem_post(sem);
 				}
 
 				//Write
-				if (conf->assigned_jobs < conf->total_jobs) {
+				if (conf->assigned_jobs < conf->total_jobs && slaves[i].assigned_jobs == 0) {
 					write(slaves[i].stdin_fd, files[conf->assigned_jobs], strlen(files[conf->assigned_jobs]) + 1);
 					conf->assigned_jobs++;
+					slaves[i].assigned_jobs++;
 				} else {
 					write(slaves[i].stdin_fd, NULL, 0);
 				}
